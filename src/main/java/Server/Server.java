@@ -28,6 +28,8 @@ public class Server {
 
     // Array list to hold information about the files received.
     static ArrayList<MyFile> myFiles = new ArrayList<>();
+    // Array list to hold all conected client.
+    static ArrayList<Socket> ClientsList = new ArrayList<>();
 
     public static void main(String[] args) throws IOException {
 
@@ -77,10 +79,10 @@ public class Server {
             try {
                 // Wait for a client to connect and when they do create a socket to communicate with them.
                 Socket socket = serverSocket.accept();
-
+                //append all conected client
+                ClientsList.add(socket);
                 // Stream to receive data from the client through the socket.
                 DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
-
                 // Read the size of the file name so know when to stop reading.
                 int fileNameLength = dataInputStream.readInt();
                 // If the file exists
@@ -88,7 +90,7 @@ public class Server {
                     // Byte array to hold name of file.
                     byte[] fileNameBytes = new byte[fileNameLength];
                     // Read from the input stream into the byte array.
-                    dataInputStream.readFully(fileNameBytes, 0, fileNameBytes.length);
+                    dataInputStream.readFully(fileNameBytes, 0, fileNameBytes.length);               
                     // Create the file name from the byte array.
                     String fileName = new String(fileNameBytes);
                     // Read how much data to expect for the actual content of the file.
@@ -99,6 +101,8 @@ public class Server {
                         byte[] fileContentBytes = new byte[fileContentLength];
                         // Read from the input stream into the fileContentBytes array.
                         dataInputStream.readFully(fileContentBytes, 0, fileContentBytes.length);
+                        //send File To All Clients
+                        broadcastFileToAllClients(fileNameBytes, fileContentBytes);
                         // Panel to hold the picture and file name.
                         JPanel jpFileRow = new JPanel();
                         jpFileRow.setLayout(new BoxLayout(jpFileRow, BoxLayout.X_AXIS));
@@ -204,7 +208,14 @@ public class Server {
             }
         };
     }
-
+    
+    /**
+     * createFrame
+     * @param fileName
+     * @param fileData
+     * @param fileExtension
+     * @return JFrame
+     */
     public static JFrame createFrame(String fileName, byte[] fileData, String fileExtension) {
 
         // Frame to hold everything.
@@ -326,6 +337,31 @@ public class Server {
         }
     }
     
+    /**
+     * broadcastFileToAllClients
+     * @param fileNameBytes
+     * @param fileContentBytes
+     * @throws IOException 
+     */
+    public static void broadcastFileToAllClients(byte[] fileNameBytes, byte[] fileContentBytes) throws IOException {
+        for (Socket client : ClientsList) {
+            // Create an output stream to write to write to the server over the socket connection.
+            DataOutputStream dataOutputStream = new DataOutputStream(client.getOutputStream());
+            // Send the length of the name of the file so server knows when to stop reading.
+            dataOutputStream.writeInt(fileNameBytes.length);
+            // Send the file name.
+            dataOutputStream.write(fileNameBytes);
+            // Send the length of the file so server knows when to stop reading.
+            dataOutputStream.writeInt(fileContentBytes.length);
+            // Send the file .
+            dataOutputStream.write(fileContentBytes);
+        } 
+    }
+    
+    /**
+     * playMusic
+     * @param fileName 
+     */
     public static void playMusic(String fileName) {
         try {
             File music = new File(fileName);
